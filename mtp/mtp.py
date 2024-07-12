@@ -14,7 +14,7 @@ def dump_cfg(frames, filename, symbol_to_type, mode='w', clean_info=True):
     symbol_to_type: dict, map elements to integers
     mode: mode of `open` function
     clean_info: clean `info` of an Atoms object before dumping. If you want to use energy/force/stress in Atoms.info, set it as False
-    """    
+    """
 
     with open(filename, mode) as f:
         for atoms in frames:
@@ -67,7 +67,7 @@ def dump_cfg(frames, filename, symbol_to_type, mode='w', clean_info=True):
             f.write(ret)
 
 
-#TODO 
+#TODO
 # different cell
 # pbc
 
@@ -77,18 +77,18 @@ def reading_state(line, state):
         state = 'begin'
     elif 'Size' in line:
         state = 'size'
-    elif 'Supercell' in line: 
+    elif 'Supercell' in line:
         state = 'cell'
-    elif 'AtomData' in line: 
+    elif 'AtomData' in line:
         state = 'atom'
-    elif 'Energy' in line: 
+    elif 'Energy' in line:
         state = 'en'
-    elif 'PlusStress' in line: 
+    elif 'PlusStress' in line:
         state = 'stress'
-    elif 'END_CFG' in line: 
+    elif 'END_CFG' in line:
         state = 'end'
 
-    return state    
+    return state
 
 def load_cfg(filename, type_to_symbol, save_in_info=False):
     """
@@ -120,7 +120,7 @@ def load_cfg(filename, type_to_symbol, save_in_info=False):
             if state == 'size':
                 line = f.readline()
                 natoms = int(line.split()[0])
-            
+
             if state == 'cell':
                 #for i in range(3):
                 #    line = f.readline()
@@ -135,7 +135,7 @@ def load_cfg(filename, type_to_symbol, save_in_info=False):
                 if 'fx' in line:
                     has_force = True
                     forces = []
-                
+
                 for _ in range(natoms):
                     line = f.readline()
                     fields = line.split()
@@ -173,7 +173,7 @@ def load_cfg(filename, type_to_symbol, save_in_info=False):
                     #results['pstress'] = results['stress'] / GPa
                     #atoms.info['stress'] = -plus_stress / atoms.get_volume()
                     #atoms.info['pstress'] = atoms.info['stress'] / GPa
-                
+
             if state == 'end':
                 if save_in_info:
                     for key, val in results.items():
@@ -194,13 +194,13 @@ def load_cfg(filename, type_to_symbol, save_in_info=False):
 class MTPCalculator(FileIOCalculator):
 
     # The default command to run MTP
-    command = "mlp calc-efs pot.mtp ASE_IN.CFG ASE_OUT.CFG"
+    #command = "mlp calc-efs pot.mtp ASE_IN.CFG ASE_OUT.CFG"
     implemented_properties = ['energy', 'forces', 'stress']
-    default_parameters = dict(
-        exe='mlp',
-        pot='pot.mtp',
-        symbol2type={},
-        )
+    #default_parameters = dict(
+    #    exe='mlp',
+    #    pot='pot.mtp',
+    #    symbol2type={},
+    #    )
 
 
 
@@ -210,20 +210,19 @@ class MTPCalculator(FileIOCalculator):
         """
         Required parameters:
         symbol2type: symbol-type mapping
-
-        Optional parameters:
         exe: exe file for MTP
         pot: potential file for MTP
-        
+
         """
 
-
-        FileIOCalculator.__init__(self, restart, ignore_bad_restart_file,
-                                  label, atoms, **kwargs)
-        
         # command to run MTP
-        self.command = "{} calc-efs {} ASE_IN.CFG ASE_OUT.CFG".format(self.parameters['exe'], self.parameters['pot'])
-        
+        command = f"{kwargs['exe']} calc-efs {kwargs['pot']} ASE_IN.CFG ASE_OUT.CFG"
+
+        super().__init__(restart=restart, ignore_bad_restart_file=ignore_bad_restart_file,
+                                  label=label, atoms=atoms, command=command, profile=None, **kwargs)
+
+        #self.command = "{} calc-efs {} ASE_IN.CFG ASE_OUT.CFG".format(self.parameters['exe'], self.parameters['pot'])
+
         # type-symbol mapping
         s2t = self.parameters['symbol2type']
         t2s = dict()
@@ -236,13 +235,13 @@ class MTPCalculator(FileIOCalculator):
         """
         """
         atoms.info = {}
-        dump_cfg([atoms], 'ASE_IN.CFG', self.parameters['symbol2type']) 
+        dump_cfg([atoms], 'ASE_IN.CFG', self.parameters['symbol2type'])
 
 
     def read_results(self):
         """
         """
-        outAts = load_cfg('ASE_OUT.CFG', self.parameters['type2symbol'], save_in_info=True)[0] 
+        outAts = load_cfg('ASE_OUT.CFG', self.parameters['type2symbol'], save_in_info=True)[0]
         #self.results = {"energy" : outAts.info['energy'], "forces" : outAts.info['forces'], "stress" : outAts.info['stress']}
         self.results = {"energy" : outAts.info['energy'], "forces" : outAts.info['forces']}
         if 'stress' in outAts.info.keys():
