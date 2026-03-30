@@ -85,6 +85,8 @@ def reading_state(line, state):
         state = 'en'
     elif 'PlusStress' in line:
         state = 'stress'
+    elif 'Feature' in line:
+        state = 'no'
     elif 'END_CFG' in line:
         state = 'end'
 
